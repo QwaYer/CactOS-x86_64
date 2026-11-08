@@ -32,13 +32,13 @@ siblings = fs.parent(src_root)
 _bridge = get_option('bridge')
 bridge = _bridge.startswith('/') ? _bridge : src_root / _bridge
 
-kern = siblings / 'CactKernel-x86_32'
-libc = siblings / 'CactLibc-x86_32'
-sole = siblings / 'Cactsole-x86_32'
-cgoct = siblings / 'Cgoct-x86_32'
-userbins = siblings / 'CactUserBins-x86_32'
-install = siblings / 'Cact-install-x86_32'
-repo = siblings / 'LocalRepoCactOS-x86_32'
+kern = siblings / 'CactKernel-x86_64'
+libc = siblings / 'CactLibc-x86_64'
+sole = siblings / 'Cactsole-x86_64'
+cgoct = siblings / 'Cgoct-x86_64'
+userbins = siblings / 'CactUserBins-x86_64'
+install = siblings / 'Cact-install-x86_64'
+repo = siblings / 'LocalRepoCactOS-x86_64'
 
 # Module repos whose .cctk blobs belong in the image.  The canonical list is
 # CactBridge's drivers.list (one repo name per line, "#" comments) so the ISO
@@ -61,14 +61,14 @@ endforeach
 
 _step_tpl = ('d="@0@"; ' +
              'if [ ! -f "$d/build-meson/build.ninja" ]; then ' +
-             'meson setup "$d/build-meson" "$d" --cross-file "$d/cross/i686-cact-clang.ini" @1@; ' +
+             'meson setup "$d/build-meson" "$d" --cross-file "$d/cross/x86_64-cact-clang.ini" @1@; ' +
              'else meson configure "$d/build-meson" @1@ > /dev/null; fi; ' +
              ninja.full_path() + ' -C "$d/build-meson" @2@; ')
 
 # Siblings that need no options (their defaults point at the right paths).
 _libc_tpl = ('d="@0@"; ' +
              'if [ ! -f "$d/build-meson/build.ninja" ]; then ' +
-             'meson setup "$d/build-meson" --cross-file "$d/cross/i686-cact-clang.ini"; fi; ' +
+             'meson setup "$d/build-meson" --cross-file "$d/cross/x86_64-cact-clang.ini"; fi; ' +
              ninja.full_path() + ' -C "$d/build-meson" @1@; ')
 
 _cactlib_opt = '-Dcactlib="' + libc + '"'
@@ -85,7 +85,7 @@ _script_userbins = _step_tpl.format(
 
 _script_drivers = ''
 foreach d : _driver_names
-  _dir = siblings / (d + '-for-Cact-x86_32')
+  _dir = siblings / (d + '-for-Cact-x86_64')
   _script_drivers += (
     'if [ -f "' + _dir + '/meson.build" ]; then ' +
     _step_tpl.format(_dir, '-Dkern_root="' + kern + '" -Dlocal_repo="' + repo + '"', 'stage') +
@@ -98,7 +98,7 @@ if fs.exists(install / 'meson.build')
   _script_install = (
     'd="' + install + '"; ' +
     'if [ ! -f "$d/build-meson/build.ninja" ]; then ' +
-    'meson setup "$d/build-meson" "$d" --cross-file "$d/cross/i686-cact-clang.ini" ' +
+    'meson setup "$d/build-meson" "$d" --cross-file "$d/cross/x86_64-cact-clang.ini" ' +
     _cactlib_opt + '; else meson configure "$d/build-meson" ' +
     _cactlib_opt + ' > /dev/null; fi; ' +
     ninja.full_path() + ' -C "$d/build-meson" grub-bundle stage stage-media; ')
@@ -169,7 +169,7 @@ foreach d : [kern, libc, sole, cgoct, userbins, install, repo]
   )
 endforeach
 foreach d : _driver_names
-  _dir = siblings / (d + '-for-Cact-x86_32')
+  _dir = siblings / (d + '-for-Cact-x86_64')
   _script_clean += (
     'if [ -d "' + _dir + '/build-meson" ]; then ' +
     ninja.full_path() + ' -C "' + _dir + '/build-meson" clean; fi; '
