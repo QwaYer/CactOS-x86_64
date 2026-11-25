@@ -101,7 +101,7 @@ ninja -C build-meson disk     # empty ext4 CactKernel-x86_64/build/nvme.img
 | Target | What you get |
 |---|---|
 | `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`cctkfs.img`) |
-| `ninja -C build-meson iso` | **kernel** → **localrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
+| `ninja -C build-meson iso` | **kernel** → **firmrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
 | `ninja -C build-meson iso-gui` | Same, through **`build.py --gui-iso`** |
 | `ninja -C build-meson disk` | empty **ext4** `CactKernel-x86_64/build/nvme.img` |
 | `ninja -C build-meson kernel` | Kernel only |
