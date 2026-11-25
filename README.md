@@ -41,7 +41,7 @@
 | **Repositories integrated** | 10+ (kernel, libc, shell, init, userbins, drivers, packer, bridge, Xfbdev, GUI) |
 | **Syscall traps** | 15 — authoritative enum in `CactKernel-x86_64` [`syscalls.h`](https://github.com/QwaYer/CactKernel-x86_64/blob/main/Cact/kernel/core/syscall/syscalls.h); every other operation is a VFS-node ioctl ([`ioctl_abi.h`](https://github.com/QwaYer/CactKernel-x86_64/blob/main/Cact/kernel/core/syscall/ioctl_abi.h)) |
 | **Default goal** | `iso-gui` — full ISO with GUI support |
-| **Drivers (out-of-tree)** | AHCI, NVMe, Virtio-net, Virtio-gpu, Yukon, Intel-HDA (PCI `.cctk`) + EXT4, FAT32 (filesystem `.cctk`) + RT2800USB (USB `.cctk`) — staged by the `drivers` target |
+| **Drivers (out-of-tree)** | AHCI, NVMe, Intel-HDA (PCI `.cctk`) + EXT4, FAT32 (filesystem `.cctk`) + USB-storage (USB `.cctk`) → packed into `drvrepo.tar.zst`; network (Virtio-net, Yukon, RT2800USB) → `netdrvrepo.tar.zst` — both by the `drivers` target |
 | **Kernel arch** | x86_64 (32-bit x86 protected mode) |
 | **Boot** | Multiboot2 |
 
@@ -58,7 +58,10 @@
 | **[CactUserBins-x86_64](https://github.com/QwaYer/CactUserBins-x86_64)** | 123 userspace tools — `ls`, `cat`, `ping`, `ip`, `wget`, etc. |
 | **[CactXfbdev-x86_64](https://github.com/QwaYer/CactXfbdev-x86_64)** | Framebuffer compositor — GUI support on tty |
 | **[CactBridge](https://github.com/QwaYer/CactBridge-x86)** | ISO packager — wraps kernel.bin + localbinrepo.img via grub-mkrescue |
-| **[LocalRepoCactOS-x86_64](../LocalRepoCactOS-x86_64)** | Staging tree → `localbinrepo.img` — PCI drivers + user ELFs in one Multiboot2 module |
+| **[LocalRepoCactOS-x86_64](../LocalRepoCactOS-x86_64)** | Staging tree → `localbinrepo.img` — user ELFs, installer media, packages (drivers ride `drvrepo`/`netdrvrepo`) |
+| **[Driver-for-Cact-x86_64](../Driver-for-Cact-x86_64)** | Aggregates the non-network drivers → `drvrepo.tar.zst` (boot module `/dev/drvrepo`) |
+| **[Network-for-Cact-x86_64](../Network-for-Cact-x86_64)** | Aggregates the network drivers → `netdrvrepo.tar.zst` (boot module `/dev/netdrvrepo`) |
+| **[grubrepo](../grubrepo)** | GRUB menus + `make-iso.sh` / `make-grub-payload.sh` — all GRUB packaging |
 | **[Cgoct-gui-x86_64](https://github.com/QwaYer/Cgoct-gui-x86_64)** | GUI supervisor variant |
 | **[LocalRepoCactOS-gui](../LocalRepoCactOS-gui)** | GUI localbinrepo staging tree |
 
@@ -91,7 +94,7 @@ python3 CactBridge-x86/build.py --non-gui-iso --run   # build + run
 
 ```sh
 meson setup build-meson
-ninja -C build-meson stage    # libc → cactsole/cgoct → userbins → drivers → localbinrepo.img
+ninja -C build-meson stage    # libc → cactsole/cgoct → userbins → drivers (drvrepo/netdrvrepo) → localbinrepo.img
 ninja -C build-meson kernel   # kernel.bin only
 ninja -C build-meson iso      # non-GUI ISO via CactBridge build.py --non-gui-iso
 ninja -C build-meson iso-gui  # GUI ISO via CactBridge build.py --gui-iso
@@ -100,12 +103,12 @@ ninja -C build-meson disk     # empty ext4 CactKernel-x86_64/build/nvme.img
 
 | Target | What you get |
 |---|---|
-| `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`localbinrepo.img`) |
-| `ninja -C build-meson iso` | **kernel** → **firmrepo** → **netdrvrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
+| `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** (`drvrepo`/`netdrvrepo`) → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`localbinrepo.img`) |
+| `ninja -C build-meson iso` | **kernel** → **firmrepo** → **netdrvrepo** → **drvrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
 | `ninja -C build-meson iso-gui` | Same, through **`build.py --gui-iso`** |
 | `ninja -C build-meson disk` | empty **ext4** `CactKernel-x86_64/build/nvme.img` |
 | `ninja -C build-meson kernel` | Kernel only |
-| `ninja -C build-meson drivers` | Out-of-tree **`*-for-Cact-x86_64`** modules only |
+| `ninja -C build-meson drivers` | Packs **`drvrepo`** + **`netdrvrepo`** from the driver repos |
 | `ninja -C build-meson libc`, `… userbins`, `… localrepo`, … | Fine-grained steps |
 | `ninja -C build-meson distclean` | Clean every sibling build directory |
 
@@ -118,13 +121,13 @@ ninja stage ─ libc ─────► CactLibc-x86_64 (clibc.so / ld.so / star
               cactsole ─► Cactsole-x86_64 (depends on libc)
               cgoct ────► Cgoct-x86_64 (depends on libc)
               userbins ─► CactUserBins-x86_64 (depends on libc + cactsole includes)
-              drivers ──► *-for-Cact-x86_64 modules → *.cctk into LocalRepoCactOS-x86_64/lib/
+              drivers ──► Driver-for-Cact-x86_64 → drvrepo.tar.zst; Network-for-Cact-x86_64 → netdrvrepo.tar.zst
               kernel ───► CactKernel-x86_64 → build-meson/kernel.bin
               install ──► Cact-install-x86_64 → kernel.bin + grub/ into LocalRepoCactOS-x86_64/lib/
-              localrepo ► LocalRepoCactOS-x86_64 → localbinrepo.img (userland + modules + media + pkgs)
+              localrepo ► LocalRepoCactOS-x86_64 → localbinrepo.img (userland + media + pkgs)
 ninja kernel ───────────► CactKernel-x86_64 → build-meson/kernel.bin
 ninja iso ──────────────► CactBridge-x86 build.py → cact-non-gui.iso
-                          └ adds the firmrepo + netdrvrepo modules (netdrvrepo ◄ Network-for-Cact-x86_64/netdrvrepo.tar.zst)
+                          └ adds the firmrepo + netdrvrepo + drvrepo modules (drvrepo ◄ Driver-for-Cact-x86_64, netdrvrepo ◄ Network-for-Cact-x86_64)
 ninja iso-gui ──────────► CactBridge-x86 build.py --gui-iso
 ```
 
@@ -139,7 +142,7 @@ ninja -C Cactsole-x86_64/build-meson             # shell (auto-finds ../CactLibc
 ninja -C Cgoct-x86_64/build-meson                # init/supervisor (auto-finds ../CactLibc-x86_64)
 ninja -C CactUserBins-x86_64/build-meson stage   # userland utils → LocalRepo
 ninja -C CactKernel-x86_64/build-meson           # kernel only
-ninja -C AHCI-for-Cact-x86_64/build-meson stage  # AHCI driver → LocalRepoCactOS-x86_64/lib/
+ninja -C Driver-for-Cact-x86_64/build-meson drvrepo  # all but network → drvrepo.tar.zst
 ninja -C LocalRepoCactOS-x86_64/build-meson stage # pack localbinrepo.img
 ninja -C Network-for-Cact-x86_64/build-meson netdrvrepo # pack netdrvrepo.tar.zst
 python3 CactBridge-x86/build.py --non-gui-iso    # ISO from kernel.bin + localbinrepo.img
