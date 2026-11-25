@@ -83,15 +83,19 @@ _script_userbins = _step_tpl.format(
   ' -Dlr_bin="' + repo / 'lib/bin' + '" -Dlr_sbin="' + repo / 'lib/sbin' + '"',
   'stage')
 
-_script_drivers = ''
-foreach d : _driver_names
-  _dir = siblings / (d + '-for-Cact-x86_64')
-  _script_drivers += (
-    'if [ -f "' + _dir + '/meson.build" ]; then ' +
-    _step_tpl.format(_dir, '-Dkern_root="' + kern + '" -Dlocal_repo="' + repo + '"', 'stage') +
-    'fi; '
-  )
-endforeach
+# The out-of-tree drivers ride their own Multiboot2 modules (netdrvrepo /
+# drvrepo), not the localbinrepo image, so this step builds those archives
+# instead of staging *.cctk into LocalRepo/lib.
+drv_repo = siblings / 'Driver-for-Cact-x86_64'
+net_repo = siblings / 'Network-for-Cact-x86_64'
+
+_script_drivers = (
+  'if [ -f "' + drv_repo + '/meson.build" ]; then ' +
+  _step_tpl.format(drv_repo, '-Dkern_root="' + kern + '"', 'drvrepo') +
+  'else echo "no Driver-for-Cact-x86_64 — /dev/drvrepo stays empty" >&2; fi; ' +
+  'if [ -f "' + net_repo + '/meson.build" ]; then ' +
+  _step_tpl.format(net_repo, '-Dkern_root="' + kern + '"', 'netdrvrepo') +
+  'else echo "no Network-for-Cact-x86_64 — /dev/netdrvrepo stays empty" >&2; fi; ')
 
 _script_install = ''
 if fs.exists(install / 'meson.build')
@@ -162,7 +166,7 @@ run_target('disk',
 # Meson reserves "clean", so the Makefile's `clean` becomes "distclean"; the
 # siblings' own targets handle their trees.
 _script_clean = ''
-foreach d : [kern, libc, sole, cgoct, userbins, install, repo]
+foreach d : [kern, libc, sole, cgoct, userbins, install, repo, drv_repo, net_repo]
   _script_clean += (
     'if [ -d "' + d + '/build-meson" ]; then ' +
     ninja.full_path() + ' -C "' + d + '/build-meson" clean; fi; '
