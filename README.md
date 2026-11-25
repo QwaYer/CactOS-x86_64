@@ -11,7 +11,7 @@
 
 <p align="center">
   <strong>Workspace integrator</strong> for <strong>CactOS</strong> — builds the full ISO from kernel, libc, drivers, shell, and userland.<br>
-  One <code>ninja -C build-meson stage</code> drives <strong>CactLib</strong>, <strong>Cactsole</strong>, <strong>Cgoct</strong>, <strong>CactUserBins</strong>, out-of-tree <strong>*-for-Cact</strong> drivers, <strong>LocalRepoCactOS-x86_64</strong> (cctkfs.img) and <strong>CactKernel</strong>; <code>iso</code>/<code>iso-gui</code> then drive <strong>CactBridge</strong> (ISO).
+  One <code>ninja -C build-meson stage</code> drives <strong>CactLib</strong>, <strong>Cactsole</strong>, <strong>Cgoct</strong>, <strong>CactUserBins</strong>, out-of-tree <strong>*-for-Cact</strong> drivers, <strong>LocalRepoCactOS-x86_64</strong> (localbinrepo.img) and <strong>CactKernel</strong>; <code>iso</code>/<code>iso-gui</code> then drive <strong>CactBridge</strong> (ISO).
 </p>
 
 <p align="center">
@@ -57,10 +57,10 @@
 | **[Cgoct-x86_64](https://github.com/QwaYer/Cgoct-x86_64)** | Ring-3 supervisor (`/usr/bin/init`) — respawns shell with crash-loop damping |
 | **[CactUserBins-x86_64](https://github.com/QwaYer/CactUserBins-x86_64)** | 123 userspace tools — `ls`, `cat`, `ping`, `ip`, `wget`, etc. |
 | **[CactXfbdev-x86_64](https://github.com/QwaYer/CactXfbdev-x86_64)** | Framebuffer compositor — GUI support on tty |
-| **[CactBridge](https://github.com/QwaYer/CactBridge-x86)** | ISO packager — wraps kernel.bin + cctkfs.img via grub-mkrescue |
-| **[LocalRepoCactOS-x86_64](../LocalRepoCactOS-x86_64)** | Staging tree → `cctkfs.img` — PCI drivers + user ELFs in one Multiboot2 module |
+| **[CactBridge](https://github.com/QwaYer/CactBridge-x86)** | ISO packager — wraps kernel.bin + localbinrepo.img via grub-mkrescue |
+| **[LocalRepoCactOS-x86_64](../LocalRepoCactOS-x86_64)** | Staging tree → `localbinrepo.img` — PCI drivers + user ELFs in one Multiboot2 module |
 | **[Cgoct-gui-x86_64](https://github.com/QwaYer/Cgoct-gui-x86_64)** | GUI supervisor variant |
-| **[LocalRepoCactOS-gui](../LocalRepoCactOS-gui)** | GUI cctkfs staging tree |
+| **[LocalRepoCactOS-gui](../LocalRepoCactOS-gui)** | GUI localbinrepo staging tree |
 
 **`*-for-Cact` driver repos** (out-of-tree kernel modules packaged as `.cctk`):
 
@@ -91,7 +91,7 @@ python3 CactBridge-x86/build.py --non-gui-iso --run   # build + run
 
 ```sh
 meson setup build-meson
-ninja -C build-meson stage    # libc → cactsole/cgoct → userbins → drivers → cctkfs.img
+ninja -C build-meson stage    # libc → cactsole/cgoct → userbins → drivers → localbinrepo.img
 ninja -C build-meson kernel   # kernel.bin only
 ninja -C build-meson iso      # non-GUI ISO via CactBridge build.py --non-gui-iso
 ninja -C build-meson iso-gui  # GUI ISO via CactBridge build.py --gui-iso
@@ -100,7 +100,7 @@ ninja -C build-meson disk     # empty ext4 CactKernel-x86_64/build/nvme.img
 
 | Target | What you get |
 |---|---|
-| `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`cctkfs.img`) |
+| `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`localbinrepo.img`) |
 | `ninja -C build-meson iso` | **kernel** → **firmrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
 | `ninja -C build-meson iso-gui` | Same, through **`build.py --gui-iso`** |
 | `ninja -C build-meson disk` | empty **ext4** `CactKernel-x86_64/build/nvme.img` |
@@ -109,7 +109,7 @@ ninja -C build-meson disk     # empty ext4 CactKernel-x86_64/build/nvme.img
 | `ninja -C build-meson libc`, `… userbins`, `… localrepo`, … | Fine-grained steps |
 | `ninja -C build-meson distclean` | Clean every sibling build directory |
 
-Meson reserves the target names `install`/`test`/`clean`, hence **`stage`** and **`distclean`**. The kernel is built **before** the image pack because the installer media (`kernel.bin` + GRUB stage files) travels inside **`cctkfs.img`**.
+Meson reserves the target names `install`/`test`/`clean`, hence **`stage`** and **`distclean`**. The kernel is built **before** the image pack because the installer media (`kernel.bin` + GRUB stage files) travels inside **`localbinrepo.img`**.
 
 ### Component map (how the chain flows)
 
@@ -121,7 +121,7 @@ ninja stage ─ libc ─────► CactLibc-x86_64 (clibc.so / ld.so / star
               drivers ──► *-for-Cact-x86_64 modules → *.cctk into LocalRepoCactOS-x86_64/lib/
               kernel ───► CactKernel-x86_64 → build-meson/kernel.bin
               install ──► Cact-install-x86_64 → kernel.bin + grub/ into LocalRepoCactOS-x86_64/lib/
-              localrepo ► LocalRepoCactOS-x86_64 → cctkfs.img (userland + modules + media + pkgs)
+              localrepo ► LocalRepoCactOS-x86_64 → localbinrepo.img (userland + modules + media + pkgs)
 ninja kernel ───────────► CactKernel-x86_64 → build-meson/kernel.bin
 ninja iso ──────────────► CactBridge-x86 build.py → cact-non-gui.iso
 ninja iso-gui ──────────► CactBridge-x86 build.py --gui-iso
@@ -139,8 +139,8 @@ ninja -C Cgoct-x86_64/build-meson                # init/supervisor (auto-finds .
 ninja -C CactUserBins-x86_64/build-meson stage   # userland utils → LocalRepo
 ninja -C CactKernel-x86_64/build-meson           # kernel only
 ninja -C AHCI-for-Cact-x86_64/build-meson stage  # AHCI driver → LocalRepoCactOS-x86_64/lib/
-ninja -C LocalRepoCactOS-x86_64/build-meson stage # pack cctkfs.img
-python3 CactBridge-x86/build.py --non-gui-iso    # ISO from kernel.bin + cctkfs.img
+ninja -C LocalRepoCactOS-x86_64/build-meson stage # pack localbinrepo.img
+python3 CactBridge-x86/build.py --non-gui-iso    # ISO from kernel.bin + localbinrepo.img
 ```
 
 Siblings that have never been configured are set up automatically when driven
@@ -173,8 +173,8 @@ parent/
 ├── Cgoct-gui-x86_64        ← GUI supervisor
 ├── CactUserBins-x86_64     ← 123 userspace tools
 ├── CactXfbdev-x86_64       ← framebuffer compositor
-├── LocalRepoCactOS-x86_64  ← cctkfs.img packer (non-GUI)
-├── LocalRepoCactOS-gui     ← cctkfs.img packer (GUI)
+├── LocalRepoCactOS-x86_64  ← localbinrepo.img packer (non-GUI)
+├── LocalRepoCactOS-gui     ← localbinrepo.img packer (GUI)
 ├── CactBridge-x86          ← ISO packager
 ├── AHCI-for-Cact-x86_64    ← AHCI driver module
 ├── NVMe-for-Cact-x86_64    ← NVMe driver module
@@ -193,7 +193,7 @@ parent/
 
 Build: `ninja -C build-meson iso-gui` produces `CactBridge-x86/build/cact-gui.iso`. Boot sequence:
 
-1. **GRUB** (Multiboot2) loads `kernel.bin` + `cctkfs.img` module
+1. **GRUB** (Multiboot2) loads `kernel.bin` + `localbinrepo.img` module
 2. **CactKernel** initialises: PMM/VMM → slab → I/O APIC + IDT → PCI → xHCI → page cache → VFS → network → scheduler
 3. Kernel launches **`/usr/bin/init`** — this is **cgoct** (or **cgoct-gui** for GUI builds)
 4. **cgoct** spawns **cactsole** (interactive shell)
@@ -220,7 +220,7 @@ cact:/$
 
 ## 💾 Drivers (out-of-tree)
 
-Out-of-tree PCI drivers are compiled as relocatable `.cctk` ELFs and loaded by the kernel's `pci_load_module()` at runtime from the **cctkfs** archive.
+Out-of-tree PCI drivers are compiled as relocatable `.cctk` ELFs and loaded by the kernel's `pci_load_module()` at runtime from the **localbinrepo** archive.
 
 | Driver | Kernel name | Manifest binding | IRQ |
 |---|---|---|---|

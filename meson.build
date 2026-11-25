@@ -116,7 +116,7 @@ _script_localrepo = _step_tpl.format(
 # The full chain the Makefile's `localrepo` target expressed through make
 # prerequisites: libc → cactsole/cgoct → userbins → drivers → kernel → installer
 # media → image.  The kernel comes before the image because the media bundle
-# (kernel.bin + grub/) is packed into cctkfs.img.
+# (kernel.bin + grub/) is packed into localbinrepo.img.
 _script_stage = (
   _script_libc + _script_sole + _script_cgoct +
   _script_userbins + _script_drivers + _script_kernel +
