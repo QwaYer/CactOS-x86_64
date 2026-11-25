@@ -105,7 +105,7 @@ if fs.exists(install / 'meson.build')
     'meson setup "$d/build-meson" "$d" --cross-file "$d/cross/x86_64-cact-clang.ini" ' +
     _cactlib_opt + '; else meson configure "$d/build-meson" ' +
     _cactlib_opt + ' > /dev/null; fi; ' +
-    ninja.full_path() + ' -C "$d/build-meson" grub-bundle stage stage-media; ')
+    ninja.full_path() + ' -C "$d/build-meson" stage stage-media; ')
 endif
 
 _script_localrepo = _step_tpl.format(
