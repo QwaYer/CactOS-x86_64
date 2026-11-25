@@ -101,7 +101,7 @@ ninja -C build-meson disk     # empty ext4 CactKernel-x86_64/build/nvme.img
 | Target | What you get |
 |---|---|
 | `ninja -C build-meson stage` | **libc** → **cactsole/cgoct** → **userbins** → **drivers** → **kernel** → **installer media** → **LocalRepoCactOS-x86_64** (`localbinrepo.img`) |
-| `ninja -C build-meson iso` | **kernel** → **firmrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
+| `ninja -C build-meson iso` | **kernel** → **firmrepo** → **netdrvrepo** → **ISO via CactBridge `build.py --non-gui-iso`** |
 | `ninja -C build-meson iso-gui` | Same, through **`build.py --gui-iso`** |
 | `ninja -C build-meson disk` | empty **ext4** `CactKernel-x86_64/build/nvme.img` |
 | `ninja -C build-meson kernel` | Kernel only |
@@ -124,6 +124,7 @@ ninja stage ─ libc ─────► CactLibc-x86_64 (clibc.so / ld.so / star
               localrepo ► LocalRepoCactOS-x86_64 → localbinrepo.img (userland + modules + media + pkgs)
 ninja kernel ───────────► CactKernel-x86_64 → build-meson/kernel.bin
 ninja iso ──────────────► CactBridge-x86 build.py → cact-non-gui.iso
+                          └ adds the firmrepo + netdrvrepo modules (netdrvrepo ◄ Network-for-Cact-x86_64/netdrvrepo.tar.zst)
 ninja iso-gui ──────────► CactBridge-x86 build.py --gui-iso
 ```
 
@@ -140,6 +141,7 @@ ninja -C CactUserBins-x86_64/build-meson stage   # userland utils → LocalRepo
 ninja -C CactKernel-x86_64/build-meson           # kernel only
 ninja -C AHCI-for-Cact-x86_64/build-meson stage  # AHCI driver → LocalRepoCactOS-x86_64/lib/
 ninja -C LocalRepoCactOS-x86_64/build-meson stage # pack localbinrepo.img
+ninja -C Network-for-Cact-x86_64/build-meson netdrvrepo # pack netdrvrepo.tar.zst
 python3 CactBridge-x86/build.py --non-gui-iso    # ISO from kernel.bin + localbinrepo.img
 ```
 
